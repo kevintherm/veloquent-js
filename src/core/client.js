@@ -24,7 +24,7 @@ import { Realtime } from '../modules/realtime.js'
  *   storage: createLocalStorageAdapter()
  * })
  * 
- * const { token } = await sdk.auth.login('user@example.com', 'password')
+ * const { token } = await sdk.auth.login('users', 'user@example.com', 'password')
  * const records = await sdk.records.list('users')
  * ```
  */

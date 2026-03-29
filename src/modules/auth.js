@@ -102,22 +102,31 @@ export class Auth {
 
   /**
    * Get the currently authenticated user record
-   * Token must belong to the specified collection, otherwise returns 401
+   * If collection is provided, token must belong to that specific collection.
+   * If collection is omitted, returns the user data and their collection info from /api/user.
    * 
-   * @param {string} collection - Auth collection name
-   * @returns {Promise<Object>} User record with id, email, and collection-specific fields
+   * @param {string} [collection] - Optional auth collection name
+   * @returns {Promise<Object>} User record or profile data
    * @throws {SdkError}
    * 
    * @example
    * ```javascript
    * const user = await sdk.auth.me('users')
-   * console.log(user.email)
+   * ```
+   * 
+   * @example
+   * ```javascript
+   * const profile = await sdk.auth.me() // calls /api/user
    * ```
    */
   async me(collection) {
+    const path = collection 
+      ? `/collections/${collection}/auth/me`
+      : '/user'
+
     const result = await this.requestHelper.execute({
       method: 'GET',
-      path: `/collections/${collection}/auth/me`
+      path
     })
 
     return result.data

@@ -166,6 +166,38 @@ describe('Auth', () => {
     expect(req.url).toBe('http://localhost:3000/api/collections/users/auth/me')
   })
 
+  it('me() hits /api/user if no collection provided', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    storageAdapter.setItem('vp:token', 'test-token')
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: {
+        id: 'user-123',
+        collection_id: 'auth-coll',
+        collection_name: 'users',
+        email: 'test@example.com'
+      }
+    })
+
+    const sdk = new VeloPHP({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    const profile = await sdk.auth.me()
+
+    expect(profile.email).toBe('test@example.com')
+    expect(profile.collection_name).toBe('users')
+
+    const req = httpAdapter.getLastRequest()
+    expect(req.method).toBe('GET')
+    expect(req.url).toBe('http://localhost:3000/api/user')
+  })
+
   it('authenticated requests include bearer token', async () => {
     const httpAdapter = new MockHttpAdapter()
     const storageAdapter = new MockStorageAdapter()

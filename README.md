@@ -1,14 +1,12 @@
 # VeloPHP JavaScript SDK
 
-Lightweight, adapter-first SDK for Velo backend. Choose your own HTTP client and storage backend.
+Lightweight, adapter-first SDK for Velo backend. Choose your own HTTP client and storage implementation.
 
 ## Features
 
 - **Pluggable adapters**: Use default web adapters or bring your own HTTP and storage implementations
-- **Minimal core**: Only ~10KB gzipped for core SDK
-- **TypeScript-friendly**: JSDoc types for editor IntelliSense
-- **ESM-only**: Modern JavaScript modules
-- **Stateful token auth**: Supports opaque bearer tokens (no JWT parsing)
+- **Minimal core**: Only ~3KB gzipped for core SDK
+- **No Typescript**: JSDoc types for editor IntelliSense
 
 ## Quick Start
 
@@ -26,9 +24,11 @@ const { token } = await sdk.auth.login('users', 'user@example.com', 'password')
 
 // Records CRUD
 const records = await sdk.records.list('users')
+console.log(records.meta) // { current_page: 1, total: 100, ... }
+
 const newRecord = await sdk.records.create('users', { name: 'John' })
-const updated = await sdk.records.update('users', recordId, { name: 'Jane' })
-await sdk.records.delete('users', recordId)
+const updated = await sdk.records.update('users', newRecord.id, { name: 'Jane' })
+await sdk.records.delete('users', newRecord.id)
 
 // Logout
 await sdk.auth.logout('users')
@@ -98,12 +98,15 @@ await sdk.auth.logoutAll('users')
 
 ```javascript
 // List records with options
-const { records, meta } = await sdk.records.list('posts', {
+const records = await sdk.records.list('posts', {
   filter: 'status = "published"',
   sort: '-created_at,title',
   per_page: 25,
   expand: 'userId,categoryId'
 })
+
+console.log(records)      // [ {...}, {...} ]
+console.log(records.meta) // { per_page: 25, current_page: 1, ... }
 
 // Create record
 const post = await sdk.records.create('posts', {
@@ -126,8 +129,6 @@ const updated = await sdk.records.update('posts', recordId, {
 await sdk.records.delete('posts', recordId)
 ```
 
-```
-
 ## Custom HTTP Adapter
 
 Implement the `HttpAdapter` interface to provide your own HTTP client:
@@ -135,38 +136,80 @@ Implement the `HttpAdapter` interface to provide your own HTTP client:
 ```javascript
 class CustomHttpAdapter {
   async request(req) {
-    // req = {
-    //   url: string
-    //   method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
-    //   headers?: Record<string, string>
-    //   body?: any
-    //   signal?: AbortSignal
-    //   timeout?: number
-    // }
+    // Determine headers
+    const headers = {
+      'content-type': 'application/json',
+      ...(req.headers || {})
+    }
 
     const response = await fetch(req.url, {
       method: req.method,
-      headers: req.headers,
+      headers: headers,
       body: req.body ? JSON.stringify(req.body) : undefined,
       signal: req.signal
     })
 
-    // Must return:
-    // {
-    //   status: number
-    //   statusText: string
-    //   headers: Record<string, string>
-    //   data: any
-    // }
+    // Parse response data safely
+    const contentType = response.headers.get('content-type') || ''
+    let data = null
+    
+    if (contentType.includes('application/json')) {
+      data = await response.json()
+    } else {
+      data = await response.text()
+    }
 
     return {
       status: response.status,
       statusText: response.statusText,
-      headers: Object.fromEntries(response.headers),
-      data: await response.json()
+      headers: Object.fromEntries(response.headers.entries()),
+      data
     }
   }
 }
+```
+
+## Realtime Module
+
+Velo SDK supports realtime subscriptions via Laravel Echo.
+
+```javascript
+import { VeloPHP, createFetchAdapter, createEchoAdapter } from '@velophp/sdk'
+import Echo from 'laravel-echo'
+import Pusher from 'pusher-js'
+
+// 1. Initialize Echo
+window.Pusher = Pusher
+const echo = new Echo({
+  broadcaster: 'reverb',
+  key: 'your-app-key',
+  wsHost: 'ws.example.com',
+  wsPort: 80,
+  forceTLS: false,
+  enabledTransports: ['ws', 'wss'],
+})
+
+// 2. Wrap Echo in SDK adapter
+const realtimeAdapter = createEchoAdapter(echo)
+
+// 3. Initialize SDK with realtime adapter
+const sdk = new VeloPHP({
+  apiUrl: 'https://api.example.com',
+  http: createFetchAdapter(),
+  storage: localStorage,
+  realtime: realtimeAdapter
+})
+
+// 4. Subscribe to collection changes
+const channel = await sdk.realtime.subscribe('posts', { 
+  filter: 'status = "published"' 
+}, (event, payload) => {
+  console.log('Event:', event)     // 'record.created', 'record.updated', 'record.deleted'
+  console.log('Record:', payload)  // The modified record data
+})
+
+// 5. Unsubscribe when done
+await sdk.realtime.unsubscribe('posts')
 ```
 
 ## Custom Storage Adapter
@@ -254,6 +297,7 @@ try {
 ### Auth Collection Scoping
 - Tokens are scoped to a specific auth collection
 - `auth.me('users')` only works if your token was issued from the `users` collection
+  - If you want to check what collection the users is authenticated from do `auth.me()` without any parameters
 - Mixing collections will result in a 401 error
 
 ### Token Persistence
@@ -266,20 +310,12 @@ try {
 - Implement re-authentication logic in your app
 - On 401, prompt user to login again
 
-## Installing Custom Adapters
-
-Custom adapter examples are in `/examples`:
-- `node-fetch-adapter.js` - Node.js compatible HTTP adapter
-- `async-storage-adapter.js` - React Native storage adapter
-
 ## Testing
 
 Run tests with Bun:
 ```bash
 bun test
 ```
-
-31 tests covering auth and records scenarios.
 
 ## License
 
