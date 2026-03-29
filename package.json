@@ -1,0 +1,51 @@
+{
+  "name": "@velophp/sdk",
+  "version": "1.0.0",
+  "description": "Lightweight, adapter-first JavaScript SDK for VeloPHP",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "browser": "./dist/index.global.js",
+  "exports": {
+    ".": {
+      "browser": "./dist/index.global.js",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "bun run scripts/build.js",
+    "test": "bun test ./tests",
+    "test:integration": "RUN_INTEGRATION_TESTS=true bun test tests/integration.test.js",
+    "test:integration:realtime": "RUN_INTEGRATION_TESTS=true bun test tests/integration-realtime.test.js",
+    "dev": "bun run scripts/build.js --watch",
+    "prepublishOnly": "bun test && bun run build"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "velo",
+    "baas",
+    "backend",
+    "sdk",
+    "adapter",
+    "auth",
+    "records"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "sideEffects": false,
+  "dependencies": {},
+  "devDependencies": {
+    "axios": "^1.14.0",
+    "esbuild": "^0.27.4",
+    "laravel-echo": "^2.3.1",
+    "pusher-js": "^8.4.3"
+  }
+}
