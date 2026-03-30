@@ -5,10 +5,10 @@
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "browser": "./dist/index.global.js",
+  "browser": "./dist/index.mjs",
   "exports": {
     ".": {
-      "browser": "./dist/index.global.js",
+      "browser": "./dist/index.mjs",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
