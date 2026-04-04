@@ -8,7 +8,6 @@ Lightweight, adapter-first SDK for Veloquent backend. Choose your own HTTP clien
 - **Minimal core**: Only ~3KB gzipped for core SDK
 - **No Typescript**: JSDoc types for editor IntelliSense
 - **Consumer-facing helpers**: Records, auth, and realtime built for application consumers
-- **Superuser/admin helpers**: Collections, schema, onboarding, and impersonation require a valid superuser token and are documented in [SUPERUSER.md](SUPERUSER.md)
 
 ## Quick Start
 
