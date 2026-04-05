@@ -17,11 +17,11 @@ export class Auth {
   }
 
   /**
-   * Login with email and password
+   * Login with identity and password
    * Issues a stateful bearer token (opaque, 64-char hex string)
    * 
    * @param {string} collection - Auth collection name
-   * @param {string} email
+   * @param {string} identity - Value of the identity field (e.g. email or username)
    * @param {string} password
    * @returns {Promise<Object>} { token, expires_in?, collection_name }
    * @throws {SdkError}
@@ -31,11 +31,11 @@ export class Auth {
    * const { token } = await sdk.auth.login('users', 'user@example.com', 'password')
    * ```
    */
-  async login(collection, email, password) {
+  async login(collection, identity, password) {
     const result = await this.requestHelper.execute({
       method: 'POST',
       path: `/collections/${collection}/auth/login`,
-      body: { email, password }
+      body: { identity, password }
     })
 
     // Extract token and store in storage
