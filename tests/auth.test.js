@@ -58,7 +58,7 @@ describe('Auth', () => {
     expect(req.method).toBe('POST')
     expect(req.url).toBe('http://localhost:3000/api/collections/users/auth/login')
     expect(req.body).toEqual({
-      email: 'test@example.com',
+      identity: 'test@example.com',
       password: 'password'
     })
   })
