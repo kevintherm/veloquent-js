@@ -24,7 +24,7 @@ export class Realtime {
       this._handleVisibilityChange = () => {
         if (document.visibilityState === 'visible') {
           this.activeChannels.forEach((_, channelName) => {
-            this.performHeartbeat(channelName)
+            this.performHeartbeat(channelName, true)
           })
         }
       }
@@ -35,14 +35,15 @@ export class Realtime {
   /**
    * Perform heartbeat for a specific channel by refreshing all its subscriptions
    * @param {string} channelName 
+   * @param {boolean} [isPulse=false] - If true, this is a visibility-triggered pulse (subject to throttle)
    */
-  async performHeartbeat(channelName) {
+  async performHeartbeat(channelName, isPulse = false) {
     const channelInfo = this.activeChannels.get(channelName)
     if (!channelInfo) return
 
-    // Throttle to avoid spamming requests (e.g. rapid tab switching)
+    // Throttle only visibility-triggered pulses to avoid spamming requests (e.g. rapid tab switching)
     const now = Date.now()
-    if (channelInfo.lastHeartbeat && (now - channelInfo.lastHeartbeat) < 2000) {
+    if (isPulse && channelInfo.lastHeartbeat && (now - channelInfo.lastHeartbeat) < 2000) {
       return
     }
     channelInfo.lastHeartbeat = now
@@ -121,7 +122,7 @@ export class Realtime {
 
       // Start periodic heartbeat for this specific channel
       channelInfo.timer = setInterval(() => {
-        this.performHeartbeat(channelName)
+        this.performHeartbeat(channelName, false)
       }, this.heartbeatMs)
 
       this.activeChannels.set(channelName, channelInfo)
