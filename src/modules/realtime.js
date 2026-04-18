@@ -16,14 +16,59 @@ export class Realtime {
     this.requestHelper = requestHelper
     this.adapter = adapter
     this.heartbeatMs = 30000
-    this.activeChannels = new Map() // channelName -> { echoChannel, timer, listeners: Set<{ collection, callback }> }
+    this.activeChannels = new Map() // channelName -> { echoChannel, timer, lastHeartbeat, listeners: Set, subscriptions: Map }
     this.collectionToChannel = new Map() // collection -> channelName
+
+    // Browser-only optimization: refresh subscriptions when the tab becomes visible
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      this._handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          this.activeChannels.forEach((_, channelName) => {
+            this.performHeartbeat(channelName)
+          })
+        }
+      }
+      document.addEventListener('visibilitychange', this._handleVisibilityChange)
+    }
+  }
+
+  /**
+   * Perform heartbeat for a specific channel by refreshing all its subscriptions
+   * @param {string} channelName 
+   */
+  async performHeartbeat(channelName) {
+    const channelInfo = this.activeChannels.get(channelName)
+    if (!channelInfo) return
+
+    // Throttle to avoid spamming requests (e.g. rapid tab switching)
+    const now = Date.now()
+    if (channelInfo.lastHeartbeat && (now - channelInfo.lastHeartbeat) < 2000) {
+      return
+    }
+    channelInfo.lastHeartbeat = now
+
+    const tasks = []
+    channelInfo.subscriptions.forEach((options, collection) => {
+      tasks.push(
+        this.requestHelper.execute({
+          method: 'POST',
+          path: `/collections/${collection}/subscribe`,
+          body: { filter: (options && options.filter) || null }
+        }).catch(() => { /* silence heartbeat errors */ })
+      )
+    })
+
+    await Promise.all(tasks)
   }
 
   /**
    * Disconnect from all realtime channels
    */
   disconnect() {
+    if (typeof document !== 'undefined' && this._handleVisibilityChange) {
+      document.removeEventListener('visibilitychange', this._handleVisibilityChange)
+    }
+
     this.activeChannels.forEach((sub, channelName) => {
       clearInterval(sub.timer)
       this.adapter.leave(channelName)
@@ -66,23 +111,18 @@ export class Realtime {
     if (!channelInfo) {
       const echoChannel = this.adapter.private(channelName)
 
-      // Start heartbeat for this specific channel
-      const timer = setInterval(async () => {
-        try {
-          // Re-subscribing to any collection on this channel refreshes the channel's TTL in the backend
-          await this.requestHelper.execute({
-            method: 'POST',
-            path: `/collections/${collection}/subscribe`,
-            body: { filter: (options && options.filter) || null }
-          })
-        } catch (error) { /* silence heartbeat errors */ }
-      }, this.heartbeatMs)
-
       channelInfo = {
         echoChannel,
-        timer,
-        listeners: new Set()
+        timer: null,
+        lastHeartbeat: Date.now(),
+        listeners: new Set(),
+        subscriptions: new Map()
       }
+
+      // Start periodic heartbeat for this specific channel
+      channelInfo.timer = setInterval(() => {
+        this.performHeartbeat(channelName)
+      }, this.heartbeatMs)
 
       this.activeChannels.set(channelName, channelInfo)
 
@@ -112,8 +152,9 @@ export class Realtime {
       })
     }
 
-    // 3. Add the callback to this channel's listeners
+    // 3. Add the callback and subscription to this channel
     channelInfo.listeners.add({ collection, callback })
+    channelInfo.subscriptions.set(collection, options)
     this.collectionToChannel.set(collection, channelName)
 
     return channelName
@@ -136,12 +177,13 @@ export class Realtime {
 
     const channelInfo = this.activeChannels.get(channelName)
     if (channelInfo) {
-      // Remove specific callback
+      // Remove specific callback and subscription
       channelInfo.listeners.forEach((listener) => {
         if (listener.collection === collection) {
           channelInfo.listeners.delete(listener)
         }
       })
+      channelInfo.subscriptions.delete(collection)
 
       // If no more listeners on this channel, leave it
       if (channelInfo.listeners.size === 0) {
