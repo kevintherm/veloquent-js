@@ -1,6 +1,6 @@
 {
   "name": "@veloquent/sdk",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Lightweight, adapter-first JavaScript SDK for Veloquent",
   "type": "module",
   "main": "./dist/index.cjs",
