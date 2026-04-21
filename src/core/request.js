@@ -8,6 +8,8 @@ import { SdkError } from '../errors/sdk-error.js'
 
 const STORAGE_KEY_TOKEN = 'vp:token'
 const STORAGE_KEY_META = 'vp:auth_meta'
+const STORAGE_KEY_USER = 'vp:auth_user'
+
 
 /**
  * Build URL with query parameters
@@ -85,11 +87,65 @@ export class RequestHelper {
     if (storage.isAsync) {
       await storage.removeItemAsync?.(STORAGE_KEY_TOKEN)
       await storage.removeItemAsync?.(STORAGE_KEY_META)
+      await storage.removeItemAsync?.(STORAGE_KEY_USER)
     } else {
       storage.removeItem(STORAGE_KEY_TOKEN)
       storage.removeItem(STORAGE_KEY_META)
+      storage.removeItem(STORAGE_KEY_USER)
     }
   }
+
+  /**
+   * Get stored user data
+   * @returns {Promise<Object | null>}
+   */
+  async getUser() {
+    const storage = this.config.storage
+    const userJson = storage.isAsync
+      ? await storage.getItemAsync?.(STORAGE_KEY_USER)
+      : storage.getItem(STORAGE_KEY_USER)
+
+    if (!userJson) return null
+    try {
+      return JSON.parse(userJson)
+    } catch (e) {
+      return null
+    }
+  }
+
+  /**
+   * Store user data
+   * @param {Object} user
+   * @returns {Promise<void>}
+   */
+  async setUser(user) {
+    const storage = this.config.storage
+    const userJson = JSON.stringify(user)
+    if (storage.isAsync) {
+      await storage.setItemAsync?.(STORAGE_KEY_USER, userJson)
+    } else {
+      storage.setItem(STORAGE_KEY_USER, userJson)
+    }
+  }
+
+  /**
+   * Get stored auth metadata
+   * @returns {Promise<Object | null>}
+   */
+  async getAuthMeta() {
+    const storage = this.config.storage
+    const metaJson = storage.isAsync
+      ? await storage.getItemAsync?.(STORAGE_KEY_META)
+      : storage.getItem(STORAGE_KEY_META)
+
+    if (!metaJson) return null
+    try {
+      return JSON.parse(metaJson)
+    } catch (e) {
+      return null
+    }
+  }
+
 
   /**
    * Execute HTTP request with auth header and error handling

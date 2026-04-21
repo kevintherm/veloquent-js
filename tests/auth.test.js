@@ -303,4 +303,65 @@ describe('Auth', () => {
 
     await expect(sdk.auth.isAuthenticated()).resolves.toBe(true)
   })
+
+  it('maintains synchronous user and session state', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    const mockUser = { id: '1', email: 'test@example.com' }
+    const mockMeta = {
+      expires_in: 3600,
+      collection_name: 'users'
+    }
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: {
+        token: 'sync-token',
+        record: mockUser,
+        ...mockMeta
+      }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    await sdk.auth.login('users', 'test@example.com', 'password')
+
+    expect(sdk.auth.user).toEqual(mockUser)
+    expect(sdk.auth.session.collection_name).toBe('users')
+    expect(JSON.parse(storageAdapter.getItem('vp:auth_user'))).toEqual(mockUser)
+  })
+
+  it('provides validation error helpers on SdkError', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    httpAdapter.mockResponse(422, {
+      message: 'Validation failed',
+      errors: {
+        email: ['The email has already been taken.'],
+        password: ['Too short', 'Must contain a number']
+      }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    try {
+      await sdk.auth.login('users', 'taken@example.com', '123')
+    } catch (e) {
+      expect(e.code).toBe('VALIDATION_ERROR')
+      expect(e.getFieldErrors('email')).toEqual(['The email has already been taken.'])
+      expect(e.getFirstFieldError('password')).toBe('Too short')
+      expect(e.getFieldErrors('non-existent')).toEqual([])
+    }
+  })
 })
+

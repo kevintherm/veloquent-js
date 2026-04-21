@@ -53,4 +53,33 @@ export class SdkError extends Error {
       details: this.details
     }
   }
+
+  /**
+   * Returns a list of error messages for a specific field if available.
+   * @param {string} field
+   * @returns {string[]}
+   */
+  getFieldErrors(field) {
+    if (this.details && typeof this.details === 'object') {
+      const errors = this.details[field]
+      if (Array.isArray(errors)) {
+        return errors.map(String)
+      }
+      if (errors) {
+        return [String(errors)]
+      }
+    }
+    return []
+  }
+
+  /**
+   * Returns the first error message for a specific field if available.
+   * @param {string} field
+   * @returns {string | null}
+   */
+  getFirstFieldError(field) {
+    const errors = this.getFieldErrors(field)
+    return errors.length > 0 ? errors[0] : null
+  }
 }
+

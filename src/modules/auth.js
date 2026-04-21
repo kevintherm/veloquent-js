@@ -14,7 +14,36 @@ export class Auth {
    */
   constructor(requestHelper) {
     this.requestHelper = requestHelper
+    this._user = null
+    this._session = null
   }
+
+  /**
+   * Loads the authenticated state from storage.
+   * Should be called during SDK initialization.
+   * @returns {Promise<void>}
+   */
+  async loadState() {
+    this._user = await this.requestHelper.getUser()
+    this._session = await this.requestHelper.getAuthMeta()
+  }
+
+  /**
+   * Get the currently authenticated user record
+   * @type {Object | null}
+   */
+  get user() {
+    return this._user
+  }
+
+  /**
+   * Get the current session metadata
+   * @type {Object | null}
+   */
+  get session() {
+    return this._session
+  }
+
 
   /**
    * Login with identity and password
@@ -47,9 +76,16 @@ export class Auth {
     }
 
     await this.requestHelper.setToken(token, meta)
+    this._session = meta
+
+    if (result.data.record) {
+      this._user = result.data.record
+      await this.requestHelper.setUser(this._user)
+    }
 
     return result.data
   }
+
 
   /**
    * Impersonate another auth record and store the returned token
@@ -72,9 +108,16 @@ export class Auth {
     }
 
     await this.requestHelper.setToken(token, meta)
+    this._session = meta
+
+    if (result.data.record) {
+      this._user = result.data.record
+      await this.requestHelper.setUser(this._user)
+    }
 
     return result.data
   }
+
 
   /**
    * Logout and revoke current token
@@ -97,8 +140,11 @@ export class Auth {
     } finally {
       // Clear token regardless of server response
       await this.requestHelper.clearToken()
+      this._user = null
+      this._session = null
     }
   }
+
 
   /**
    * Revoke all tokens for the authenticated user
@@ -122,8 +168,11 @@ export class Auth {
     } finally {
       // Clear local token regardless of server response
       await this.requestHelper.clearToken()
+      this._user = null
+      this._session = null
     }
   }
+
 
   /**
    * Get the currently authenticated user record
@@ -154,8 +203,12 @@ export class Auth {
       path
     })
 
+    this._user = result.data
+    await this.requestHelper.setUser(this._user)
+
     return result.data
   }
+
 
   /**
    * Check whether a token is currently stored
