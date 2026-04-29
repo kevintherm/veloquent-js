@@ -363,5 +363,100 @@ describe('Auth', () => {
       expect(e.getFieldErrors('non-existent')).toEqual([])
     }
   })
+
+  it('getOAuthRedirectUrl hits /api/oauth2/redirect', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: { redirect_url: 'http://localhost/oauth/google/redirect' }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    const url = await sdk.auth.getOAuthRedirectUrl('users', 'google')
+
+    expect(url).toBe('http://localhost/oauth/google/redirect')
+    const req = httpAdapter.getLastRequest()
+    expect(req.method).toBe('POST')
+    expect(req.url).toBe('http://localhost:3000/api/oauth2/redirect')
+    expect(req.body).toEqual({ collection: 'users', provider: 'google' })
+  })
+
+  it('exchangeOAuthCode hits /api/oauth2/exchange and stores session', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    const mockUser = { id: 'user-456', email: 'oauth@example.com' }
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: {
+        token: 'oauth-session-token',
+        expires_in: 3600,
+        collection_name: 'users',
+        record: mockUser
+      }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    const result = await sdk.auth.exchangeOAuthCode('test-exchange-code')
+
+    expect(result.token).toBe('oauth-session-token')
+    expect(sdk.auth.user).toEqual(mockUser)
+    expect(storageAdapter.getItem('vp:token')).toBe('oauth-session-token')
+
+    const req = httpAdapter.getLastRequest()
+    expect(req.method).toBe('POST')
+    expect(req.url).toBe('http://localhost:3000/api/oauth2/exchange')
+    expect(req.body).toEqual({ code: 'test-exchange-code' })
+  })
+
+  it('loginWithOAuth coordinates with launcher adapter', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: { redirect_url: 'http://localhost/oauth' }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    // Setup second response for exchange
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: {
+        token: 'oauth-token',
+        expires_in: 3600,
+        collection_name: 'users',
+        record: { email: 'oauth@example.com' }
+      }
+    })
+
+    const mockLauncher = async (url) => {
+      expect(url).toBe('http://localhost/oauth')
+      return 'launcher-extracted-code'
+    }
+
+    const result = await sdk.auth.loginWithOAuth('users', 'google', mockLauncher)
+
+    expect(result.token).toBe('oauth-token')
+    expect(sdk.auth.user.email).toBe('oauth@example.com')
+  })
 })
+
 

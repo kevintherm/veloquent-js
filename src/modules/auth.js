@@ -211,6 +211,84 @@ export class Auth {
 
 
   /**
+   * Get the OAuth provider redirect URL for the given collection.
+   * Open this URL in a browser/webview. After authorization, the server
+   * redirects back with a `?code=` exchange code — pass it to `exchangeOAuthCode()`.
+   *
+   * @param {string} collection - Auth collection name or ID
+   * @param {string} provider - 'google' | 'github' | 'facebook' | 'x'
+   * @returns {Promise<string>} The redirect URL to open
+   */
+  async getOAuthRedirectUrl(collection, provider) {
+    const result = await this.requestHelper.execute({
+      method: 'POST',
+      path: '/oauth2/redirect',
+      body: { collection, provider }
+    })
+
+    return result.data.redirect_url
+  }
+
+  /**
+   * Exchange an OAuth exchange code for a session token.
+   * Extract the `code` param from your deep link / redirect URI and call this.
+   * Token and user record are stored automatically.
+   *
+   * @param {string} code - The exchange code from the OAuth callback URL
+   * @returns {Promise<Object>} { token, expires_in, collection_name, collection_id, record }
+   */
+  async exchangeOAuthCode(code) {
+    const result = await this.requestHelper.execute({
+      method: 'POST',
+      path: '/oauth2/exchange',
+      body: { code }
+    })
+
+    return this._doExchange(result.data)
+  }
+
+  /**
+   * Full OAuth login flow.
+   * Gets the redirect URL, delegates browser/launch handling to the provided launcher,
+   * then exchanges the code for a session token.
+   *
+   * @param {string} collection - Auth collection name or ID
+   * @param {string} provider - 'google' | 'github' | 'facebook' | 'x'
+   * @param {Function} launcher - Platform adapter that opens the URL and resolves with the exchange code
+   * @returns {Promise<Object>} The session data
+   */
+  async loginWithOAuth(collection, provider, launcher) {
+    const url = await this.getOAuthRedirectUrl(collection, provider)
+    const code = await launcher(url)
+    return this.exchangeOAuthCode(code)
+  }
+
+  /**
+   * Shared token storage logic for OAuth flows
+   * @private
+   * @param {Object} data
+   * @returns {Object}
+   */
+  async _doExchange(data) {
+    const token = data.token
+    const meta = {
+      expires_in: data.expires_in,
+      collection_name: data.collection_name,
+      issued_at: new Date().toISOString()
+    }
+
+    await this.requestHelper.setToken(token, meta)
+    this._session = meta
+
+    if (data.record) {
+      this._user = data.record
+      await this.requestHelper.setUser(this._user)
+    }
+
+    return data
+  }
+
+  /**
    * Check whether a token is currently stored
    * Does not validate token freshness or server-side revocation
    * 
