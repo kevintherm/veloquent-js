@@ -1,6 +1,7 @@
 import * as esbuild from 'esbuild';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { execSync } from 'node:child_process';
 
 const DIST_DIR = './dist';
 
@@ -56,7 +57,16 @@ async function build() {
     } else {
       await Promise.all(contexts.map(ctx => ctx.rebuild()));
       await Promise.all(contexts.map(ctx => ctx.dispose()));
-      console.log('✅ Build completed successfully!');
+      
+      // Generate types
+      console.log('📦 Generating type declarations...');
+      try {
+        execSync('bun x tsc', { stdio: 'inherit' });
+        console.log('✅ Build and type generation completed successfully!');
+      } catch (error) {
+        console.error('❌ Type generation failed:', error);
+        process.exit(1);
+      }
     }
   } catch (error) {
     console.error('❌ Build failed:', error);
