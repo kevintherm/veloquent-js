@@ -21,7 +21,7 @@ export class Collections {
    * @param {string} [options.filter]
    * @param {string} [options.sort]
    * @param {string} [options.expand]
-   * @returns {Promise<Array>} List of collections
+   * @returns {Promise<any[]>} List of collections
    */
   async list(options = {}) {
     const query = {}
@@ -41,7 +41,7 @@ export class Collections {
   /**
    * Get a single collection by name or id
    * @param {string} collection
-   * @returns {Promise<Object>} Collection object
+   * @returns {Promise<Record<string, any>>} Collection object
    */
   async get(collection) {
     const result = await this.requestHelper.execute({
@@ -54,8 +54,8 @@ export class Collections {
 
   /**
    * Create a new collection
-   * @param {Object} data
-   * @returns {Promise<Object>} Created collection
+   * @param {Record<string, any>} data
+   * @returns {Promise<Record<string, any>>} Created collection
    */
   async create(data) {
     const result = await this.requestHelper.execute({
@@ -70,8 +70,8 @@ export class Collections {
   /**
    * Update an existing collection
    * @param {string} collection
-   * @param {Object} data
-   * @returns {Promise<Object>} Updated collection
+   * @param {Record<string, any>} data
+   * @returns {Promise<Record<string, any>>} Updated collection
    */
   async update(collection, data) {
     const result = await this.requestHelper.execute({
@@ -98,7 +98,7 @@ export class Collections {
   /**
    * Truncate a collection and delete all records
    * @param {string} collection
-   * @returns {Promise<Object>} Deletion result
+   * @returns {Promise<Record<string, any>>} Deletion result
    */
   async truncate(collection) {
     const result = await this.requestHelper.execute({

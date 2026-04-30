@@ -74,6 +74,10 @@ function buildFormData(data) {
 }
 
 /**
+ * @typedef {any[] & { meta?: Record<string, any> }} RecordList
+ */
+
+/**
  * Records module - handle CRUD operations on collections
  * @class
  */
@@ -94,7 +98,7 @@ export class Records {
    * @param {string} [options.sort] - Comma-separated fields, use `-` prefix for descending (e.g., \"-created_at,name\")
    * @param {number} [options.per_page=15] - Records per page
    * @param {string} [options.expand] - Comma-separated relation fields to expand
-   * @returns {Promise<Array>} Array of records with pagination metadata
+   * @returns {Promise<RecordList>} Array of records with pagination metadata
    * @throws {SdkError}
    *
    * @example
@@ -135,8 +139,8 @@ export class Records {
    * the other field values.
    *
    * @param {string} collection - Collection name
-   * @param {Object} data - Record data. File fields accept `File`, `Blob`, `FileList`, or an array of those.
-   * @returns {Promise<Object>} Created record with id, created_at, updated_at
+   * @param {Record<string, any>} data - Record data. File fields accept `File`, `Blob`, `FileList`, or an array of those.
+   * @returns {Promise<Record<string, any>>} Created record with id, created_at, updated_at
    * @throws {SdkError}
    *
    * @example
@@ -181,7 +185,7 @@ export class Records {
    * @param {string} id - Record ULID
    * @param {Object} [options]
    * @param {string} [options.expand] - Comma-separated relation fields to expand
-   * @returns {Promise<Object>} Record with all fields
+   * @returns {Promise<Record<string, any>>} Record with all fields
    * @throws {SdkError}
    *
    * @example
@@ -215,8 +219,8 @@ export class Records {
    *
    * @param {string} collection - Collection name
    * @param {string} id - Record ULID
-   * @param {Object} data - Partial record data. Supports `fieldName+` (append) and `fieldName-` (remove) for file fields.
-   * @returns {Promise<Object>} Updated record
+   * @param {Record<string, any>} data - Partial record data. Supports `fieldName+` (append) and `fieldName-` (remove) for file fields.
+   * @returns {Promise<Record<string, any>>} Updated record
    * @throws {SdkError}
    *
    * @example

@@ -5,6 +5,21 @@
  */
 
 /**
+ * @typedef {Object} SessionMeta
+ * @property {number} [expires_in] - Seconds until token expires
+ * @property {string} collection_name - Name of the auth collection
+ * @property {string} issued_at - ISO timestamp
+ */
+
+/**
+ * @typedef {Object} AuthResult
+ * @property {string} token - Session token
+ * @property {number} [expires_in] - Seconds until token expires
+ * @property {string} collection_name - Name of the auth collection
+ * @property {Record<string, any>} [record] - The user record
+ */
+
+/**
  * Auth module - handle user authentication
  * @class
  */
@@ -30,7 +45,7 @@ export class Auth {
 
   /**
    * Get the currently authenticated user record
-   * @type {Object | null}
+   * @type {Record<string, any> | null}
    */
   get user() {
     return this._user
@@ -38,7 +53,7 @@ export class Auth {
 
   /**
    * Get the current session metadata
-   * @type {Object | null}
+   * @type {SessionMeta | null}
    */
   get session() {
     return this._session
@@ -52,7 +67,7 @@ export class Auth {
    * @param {string} collection - Auth collection name
    * @param {string} identity - Value of the identity field (e.g. email or username)
    * @param {string} password
-   * @returns {Promise<Object>} { token, expires_in?, collection_name }
+   * @returns {Promise<AuthResult>}
    * @throws {SdkError}
    * 
    * @example
@@ -91,7 +106,7 @@ export class Auth {
    * Impersonate another auth record and store the returned token
    * @param {string} collection - Auth collection name
    * @param {string} recordId - Record ULID to impersonate
-   * @returns {Promise<Object>} Token payload
+   * @returns {Promise<AuthResult>} Token payload
    * @throws {SdkError}
    */
   async impersonate(collection, recordId) {
@@ -180,7 +195,7 @@ export class Auth {
    * If collection is omitted, returns the user data and their collection info from /api/user.
    * 
    * @param {string} [collection] - Optional auth collection name
-   * @returns {Promise<Object>} User record or profile data
+   * @returns {Promise<Record<string, any>>} User record or profile data
    * @throws {SdkError}
    * 
    * @example
@@ -235,7 +250,7 @@ export class Auth {
    * Token and user record are stored automatically.
    *
    * @param {string} code - The exchange code from the OAuth callback URL
-   * @returns {Promise<Object>} { token, expires_in, collection_name, collection_id, record }
+   * @returns {Promise<AuthResult>}
    */
   async exchangeOAuthCode(code) {
     const result = await this.requestHelper.execute({
@@ -255,7 +270,7 @@ export class Auth {
    * @param {string} collection - Auth collection name or ID
    * @param {string} provider - 'google' | 'github' | 'facebook' | 'x'
    * @param {Function} launcher - Platform adapter that opens the URL and resolves with the exchange code
-   * @returns {Promise<Object>} The session data
+   * @returns {Promise<AuthResult>} The session data
    */
   async loginWithOAuth(collection, provider, launcher) {
     const url = await this.getOAuthRedirectUrl(collection, provider)
@@ -266,8 +281,8 @@ export class Auth {
   /**
    * Shared token storage logic for OAuth flows
    * @private
-   * @param {Object} data
-   * @returns {Object}
+   * @param {Record<string, any>} data
+   * @returns {Promise<AuthResult>}
    */
   async _doExchange(data) {
     const token = data.token

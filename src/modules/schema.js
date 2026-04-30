@@ -17,7 +17,7 @@ export class Schema {
 
   /**
    * List collections with corrupted schema metadata.
-   * @returns {Promise<Array>} Corrupt schema details
+   * @returns {Promise<any[]>} Corrupt schema details
    */
   async corrupt() {
     const result = await this.requestHelper.execute({
@@ -66,8 +66,8 @@ export class Schema {
 
   /**
    * Export schema metadata to JSON.
-   * @param {Object} [body]
-   * @returns {Promise<Object>} Export payload
+   * @param {Record<string, any>} [body]
+   * @returns {Promise<Record<string, any>>} Export payload
    */
   async transferExport(body = {}) {
     const result = await this.requestHelper.execute({
@@ -81,8 +81,8 @@ export class Schema {
 
   /**
    * Import schema metadata from JSON.
-   * @param {Object} body
-   * @returns {Promise<Object>} Import result
+   * @param {Record<string, any>} body
+   * @returns {Promise<Record<string, any>>} Import result
    */
   async transferImport(body) {
     const result = await this.requestHelper.execute({
@@ -96,7 +96,7 @@ export class Schema {
 
   /**
    * Get schema transfer options.
-   * @returns {Promise<Object>} Transfer options
+   * @returns {Promise<Record<string, any>>} Transfer options
    */
   async transferOptions() {
     const result = await this.requestHelper.execute({
