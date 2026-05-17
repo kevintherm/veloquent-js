@@ -61,7 +61,10 @@ export class SdkError extends Error {
    */
   getFieldErrors(field) {
     if (this.details && typeof this.details === 'object') {
-      const errors = this.details[field]
+      const source = this.details.errors && typeof this.details.errors === 'object'
+        ? this.details.errors
+        : this.details
+      const errors = source[field]
       if (Array.isArray(errors)) {
         return errors.map(String)
       }

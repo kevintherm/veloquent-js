@@ -217,15 +217,18 @@ export class RequestHelper {
     let message = data?.message || 'Unknown error'
     let details = data?.errors || data
 
-    // Map common HTTP status codes to SDK error codes
-    let code = 'HTTP_ERROR'
-    if (status === 400) code = 'BAD_REQUEST'
-    else if (status === 401) code = 'UNAUTHORIZED'
-    else if (status === 403) code = 'FORBIDDEN'
-    else if (status === 404) code = 'NOT_FOUND'
-    else if (status === 409) code = 'CONFLICT'
-    else if (status === 422) code = 'VALIDATION_ERROR'
-    else if (status >= 500) code = 'SERVER_ERROR'
+    // Map custom server-provided codes if available, otherwise map HTTP status codes
+    let code = data?.code || data?.error_type
+    if (!code) {
+      code = 'HTTP_ERROR'
+      if (status === 400) code = 'BAD_REQUEST'
+      else if (status === 401) code = 'UNAUTHORIZED'
+      else if (status === 403) code = 'FORBIDDEN'
+      else if (status === 404) code = 'NOT_FOUND'
+      else if (status === 409) code = 'CONFLICT'
+      else if (status === 422) code = 'VALIDATION_ERROR'
+      else if (status >= 500) code = 'SERVER_ERROR'
+    }
 
     return new SdkError(code, message, { statusCode: status, details })
   }

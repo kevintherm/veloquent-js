@@ -238,4 +238,74 @@ describe('Error', () => {
     expect(retryable.isRetryable()).toBe(true)
     expect(notRetryable.isRetryable()).toBe(false)
   })
+
+  it('SdkError extracts custom server error code and error_type', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    // 1. Test custom code 'SCHEMA_CORRUPT'
+    httpAdapter.mockResponse(409, {
+      code: 'SCHEMA_CORRUPT',
+      message: 'Schema is corrupt',
+      activity: 'update',
+      collection_id: 'col-123'
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    try {
+      await sdk.auth.me('users')
+      throw new Error('Should have thrown')
+    } catch (error) {
+      expect(error.code).toBe('SCHEMA_CORRUPT')
+      expect(error.statusCode).toBe(409)
+      expect(error.details.collection_id).toBe('col-123')
+    }
+
+    // 2. Test custom error_type
+    httpAdapter.mockResponse(409, {
+      error_type: 'SCHEMA_CORRUPT_ALT',
+      message: 'Schema is corrupt',
+      activity: 'update'
+    })
+
+    try {
+      await sdk.auth.me('users')
+      throw new Error('Should have thrown')
+    } catch (error) {
+      expect(error.code).toBe('SCHEMA_CORRUPT_ALT')
+    }
+  })
+
+  it('resilient getFieldErrors supports both nested and flat errors structures', () => {
+    // Flat details structure
+    const error1 = new SdkError('VALIDATION_FAILED', 'Validation failed', {
+      statusCode: 422,
+      details: {
+        email: ['The email has already been taken.'],
+        password: ['Too short']
+      }
+    })
+    expect(error1.getFieldErrors('email')).toEqual(['The email has already been taken.'])
+    expect(error1.getFirstFieldError('password')).toBe('Too short')
+
+    // Nested errors structure (e.g. when details is the full API payload containing `errors`)
+    const error2 = new SdkError('VALIDATION_FAILED', 'Validation failed', {
+      statusCode: 422,
+      details: {
+        code: 'VALIDATION_FAILED',
+        message: 'Validation failed',
+        errors: {
+          email: ['The email has already been taken.'],
+          password: ['Too short']
+        }
+      }
+    })
+    expect(error2.getFieldErrors('email')).toEqual(['The email has already been taken.'])
+    expect(error2.getFirstFieldError('password')).toBe('Too short')
+  })
 })
