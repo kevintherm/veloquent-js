@@ -27,6 +27,7 @@
  * HTTP adapter contract - implement this to provide custom HTTP clients
  * @interface HttpAdapter
  * @property {(req: HttpRequest) => Promise<HttpResponse>} request - Execute HTTP request
+ * @property {(req: HttpRequest) => AsyncGenerator<Uint8Array>} [requestStream] - Execute HTTP request and stream response bytes
  */
 
 export {}

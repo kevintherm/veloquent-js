@@ -69,6 +69,73 @@ class FetchAdapter {
       clearTimeout(timeoutId)
     }
   }
+
+  /**
+   * Execute an HTTP request and stream response bytes
+   * @param {import('./types.js').HttpRequest} req
+   * @returns {AsyncGenerator<Uint8Array>}
+   */
+  async *requestStream(req) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), req.timeout ?? this.timeout)
+
+    try {
+      const fetchInit = {
+        method: req.method,
+        headers: req.headers ?? {},
+        signal: req.signal ?? controller.signal
+      }
+
+      if (req.body) {
+        if (req.body instanceof FormData) {
+          fetchInit.body = req.body
+        } else {
+          fetchInit.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body)
+          if (!fetchInit.headers['content-type']) {
+            fetchInit.headers['content-type'] = 'application/json'
+          }
+        }
+      }
+
+      const response = await fetch(req.url, fetchInit)
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || ''
+        let data = null
+        try {
+          if (contentType.includes('application/json')) {
+            data = await response.json()
+          } else {
+            data = await response.text()
+          }
+        } catch (_) {}
+
+        const err = new Error(response.statusText)
+        err.status = response.status
+        err.statusText = response.statusText
+        err.headers = Object.fromEntries(response.headers.entries())
+        err.data = data
+        throw err
+      }
+
+      if (!response.body) {
+        return
+      }
+
+      const reader = response.body.getReader()
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          yield value
+        }
+      } finally {
+        reader.releaseLock()
+      }
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
 }
 
 /**

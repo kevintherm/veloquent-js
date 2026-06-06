@@ -205,6 +205,48 @@ export class RequestHelper {
   }
 
   /**
+   * Execute HTTP request and stream response bytes
+   * @param {Object} options
+   * @param {string} options.method
+   * @param {string} options.path
+   * @param {*} [options.body]
+   * @param {Object} [options.query]
+   * @param {AbortSignal} [options.signal]
+   * @returns {AsyncGenerator<Uint8Array>}
+   * @throws {SdkError}
+   */
+  async *executeStream({ method, path, body, query, signal }) {
+    const url = buildUrl(this.config.apiUrl + '/api', path, query)
+    const headers = {}
+
+    // Inject auth token if available
+    const token = await this.getToken()
+    if (token) {
+      headers['authorization'] = `Bearer ${token}`
+    }
+
+    try {
+      const stream = this.config.http.requestStream({
+        url,
+        method,
+        body,
+        headers,
+        signal,
+        timeout: this.config.timeout
+      })
+      yield* stream
+    } catch (error) {
+      if (error instanceof SdkError) {
+        throw error
+      }
+      if (error && error.status !== undefined) {
+        throw this.errorFromResponse(error)
+      }
+      throw new SdkError('REQUEST_FAILED', error.message, { cause: error })
+    }
+  }
+
+  /**
    * Create SdkError from HTTP response
    * @param {import('../adapters/http/types.js').HttpResponse} response
    * @returns {SdkError}

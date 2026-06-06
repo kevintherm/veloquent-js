@@ -11,10 +11,11 @@ import { Realtime } from '../modules/realtime.js'
 import { Collections } from '../modules/collections.js'
 import { Schema } from '../modules/schema.js'
 import { Onboarding } from '../modules/onboarding.js'
+import { Ai } from '../modules/ai.js'
 
 /**
  * Veloquent - Main SDK client
- * Access auth, records, collections, schema, onboarding and realtime modules through this client
+ * Access auth, records, collections, schema, onboarding, realtime and ai modules through this client
  * 
  * @class
  * @example
@@ -44,5 +45,6 @@ export class Veloquent {
     this.schema = new Schema(requestHelper)
     this.onboarding = new Onboarding(requestHelper)
     this.realtime = new Realtime(requestHelper, this.config.realtime)
+    this.ai = new Ai(requestHelper)
   }
 }

@@ -46,6 +46,22 @@ export class MockHttpAdapter {
   getAllRequests() {
     return this.requests
   }
+
+  mockStreamResponse(chunks) {
+    this.streamChunks = chunks
+  }
+
+  async *requestStream(req) {
+    this.requests.push({ ...req, isStream: true })
+    if (this.streamChunks) {
+      for (const chunk of this.streamChunks) {
+        yield chunk
+      }
+      return
+    }
+    const encoder = new TextEncoder()
+    yield encoder.encode('data: {"type":"text-delta","delta":"mocked stream chunk"}\n\n')
+  }
 }
 
 /**

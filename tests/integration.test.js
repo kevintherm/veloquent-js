@@ -108,4 +108,26 @@ describeIntegration("Live Server Integration", () => {
     await sdk.auth.logout(testUser.collection);
     expect(sdk.auth.isAuthenticated()).toBe(false);
   });
+
+  test("Integration: Should execute AI chat request", async () => {
+    const response = await sdk.ai.chat({
+      agent: "agent",
+      prompt: "1+1="
+    });
+    expect(response.text).toContain("2");
+  }, 20000);
+
+  test("Integration: Should stream AI chat request", async () => {
+    const stream = sdk.ai.chatStream({
+      agent: "agent",
+      prompt: "1+1="
+    });
+    let result = "";
+    for await (const chunk of stream) {
+      if (chunk.type === "text_delta" && chunk.delta) {
+        result += chunk.delta;
+      }
+    }
+    expect(result).toContain("2");
+  }, 20000);
 });
