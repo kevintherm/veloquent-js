@@ -25,9 +25,7 @@ describe('AI Chat', () => {
       agent: 'agent-123',
       prompt: 'Hello',
       collection: 'custom-agents',
-      messages: [{ role: 'user', content: 'prev message' }],
-      outputType: 'json',
-      schema: { type: 'object' }
+      messages: [{ role: 'user', content: 'prev message' }]
     })
 
     expect(response.text).toBe('Hello, user!')
@@ -39,9 +37,7 @@ describe('AI Chat', () => {
     expect(req.body).toEqual({
       agent: 'agent-123',
       prompt: 'Hello',
-      messages: [{ role: 'user', content: 'prev message' }],
-      output_type: 'json',
-      schema: { type: 'object' }
+      messages: [{ role: 'user', content: 'prev message' }]
     })
   })
 
@@ -66,6 +62,7 @@ describe('AI Chat', () => {
     const stream = await sdk.ai.chat({
       agent: 'agent-123',
       prompt: 'Stream this',
+      collection: 'agents',
       stream: true
     })
 
@@ -81,6 +78,7 @@ describe('AI Chat', () => {
     const req = httpAdapter.getLastRequest()
     expect(req.method).toBe('POST')
     expect(req.isStream).toBe(true)
+    expect(req.url).toBe('http://localhost:3000/api/collections/agents/ai/chat')
     expect(req.body).toEqual({
       agent: 'agent-123',
       prompt: 'Stream this',
@@ -88,33 +86,6 @@ describe('AI Chat', () => {
     })
   })
 
-  it('chat / chatStream validation throws error when streaming structured output', async () => {
-    const httpAdapter = new MockHttpAdapter()
-    const storageAdapter = new MockStorageAdapter()
-
-    const sdk = new Veloquent({
-      apiUrl: 'http://localhost:3000',
-      http: httpAdapter,
-      storage: storageAdapter
-    })
-
-    expect(() => {
-      sdk.ai.chat({
-        agent: 'agent-123',
-        prompt: 'Hi',
-        stream: true,
-        outputType: 'json'
-      })
-    }).toThrow('Streaming is not supported for structured output.')
-
-    expect(() => {
-      sdk.ai.chatStream({
-        agent: 'agent-123',
-        prompt: 'Hi',
-        schema: { type: 'object' }
-      })
-    }).toThrow('Streaming is not supported for structured output.')
-  })
 
   it('chat with attachments sends multipart/form-data request', async () => {
     const httpAdapter = new MockHttpAdapter()
@@ -137,11 +108,13 @@ describe('AI Chat', () => {
     await sdk.ai.chat({
       agent: 'agent-123',
       prompt: 'Here is file',
+      collection: 'agents',
       attachments: [mockFile]
     })
 
     const req = httpAdapter.getLastRequest()
     expect(req.method).toBe('POST')
+    expect(req.url).toBe('http://localhost:3000/api/collections/agents/ai/chat')
     expect(req.body instanceof FormData).toBe(true)
     expect(req.body.get('agent')).toBe('agent-123')
     expect(req.body.get('prompt')).toBe('Here is file')

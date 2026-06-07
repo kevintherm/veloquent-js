@@ -3,6 +3,9 @@
   "version": "1.4.4",
   "description": "Lightweight, adapter-first JavaScript SDK for Veloquent",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "browser": "./dist/index.mjs",

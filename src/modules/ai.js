@@ -88,11 +88,9 @@ export class Ai {
    * @param {Object} options
    * @param {string} options.agent - Agent ULID or unique name
    * @param {string} options.prompt - Prompt content
-   * @param {string} [options.collection='agents'] - Collection where the agent is stored
+   * @param {string} options.collection - User-defined collection where the agent is stored
    * @param {Array<{role: string, content: string}>} [options.messages] - Past messages history
    * @param {Array<File|Blob>} [options.attachments] - Files to attach/upload
-   * @param {string} [options.outputType] - Override output format ('text' or 'json')
-   * @param {Object} [options.schema] - JSON Schema for structured output
    * @param {boolean} [options.stream=false] - Stream response chunks if true
    * @param {AbortSignal} [options.signal] - Cancellation signal
    * @returns {Promise<Object>|AsyncGenerator<Object>} Response object, or generator if stream: true
@@ -100,15 +98,10 @@ export class Ai {
    */
   chat(options = {}) {
     const {
-      outputType,
-      schema,
       stream = false
     } = options
 
     if (stream) {
-      if (outputType === 'json' || schema) {
-        throw new Error('Streaming is not supported for structured output.')
-      }
       return this.chatStream(options)
     }
 
@@ -119,11 +112,9 @@ export class Ai {
     const {
       agent,
       prompt,
-      collection = 'agents',
+      collection,
       messages,
       attachments,
-      outputType,
-      schema,
       signal
     } = options
 
@@ -131,8 +122,6 @@ export class Ai {
 
     if (messages) body.messages = messages
     if (attachments) body.attachments = attachments
-    if (outputType) body.output_type = outputType
-    if (schema) body.schema = schema
 
     const formData = buildFormData(body)
 
@@ -152,25 +141,14 @@ export class Ai {
    * @param {Object} options
    * @param {string} options.agent - Agent ULID or unique name
    * @param {string} options.prompt - Prompt content
-   * @param {string} [options.collection='agents'] - Collection where the agent is stored
+   * @param {string} options.collection - User-defined collection where the agent is stored
    * @param {Array<{role: string, content: string}>} [options.messages] - Past messages history
    * @param {Array<File|Blob>} [options.attachments] - Files to attach/upload
-   * @param {string} [options.outputType] - Structured JSON is not supported during streaming
-   * @param {Object} [options.schema] - Structured JSON is not supported during streaming
    * @param {AbortSignal} [options.signal] - Cancellation signal
    * @returns {AsyncGenerator<Object>} Generator yielding parsed event objects
    * @throws {Error|SdkError}
    */
   chatStream(options = {}) {
-    const {
-      outputType,
-      schema
-    } = options
-
-    if (outputType === 'json' || schema) {
-      throw new Error('Streaming is not supported for structured output.')
-    }
-
     return this._chatStreamImpl(options)
   }
 
@@ -178,7 +156,7 @@ export class Ai {
     const {
       agent,
       prompt,
-      collection = 'agents',
+      collection,
       messages,
       attachments,
       signal

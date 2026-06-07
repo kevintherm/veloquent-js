@@ -112,7 +112,8 @@ describeIntegration("Live Server Integration", () => {
   test("Integration: Should execute AI chat request", async () => {
     const response = await sdk.ai.chat({
       agent: "agent",
-      prompt: "1+1="
+      prompt: "1+1=",
+      collection: "agents"
     });
     expect(response.text).toContain("2");
   }, 20000);
@@ -120,7 +121,8 @@ describeIntegration("Live Server Integration", () => {
   test("Integration: Should stream AI chat request", async () => {
     const stream = sdk.ai.chatStream({
       agent: "agent",
-      prompt: "1+1="
+      prompt: "1+1=",
+      collection: "agents"
     });
     let result = "";
     for await (const chunk of stream) {
