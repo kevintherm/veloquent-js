@@ -9,6 +9,7 @@ import { SdkError } from '../errors/sdk-error.js'
 const STORAGE_KEY_TOKEN = 'vp:token'
 const STORAGE_KEY_META = 'vp:auth_meta'
 const STORAGE_KEY_USER = 'vp:auth_user'
+const STORAGE_KEY_DEVICE_ID = 'vp:device_id'
 
 
 /**
@@ -148,6 +149,60 @@ export class RequestHelper {
 
 
   /**
+   * Get or generate a persistent device ID
+   * @returns {Promise<string>}
+   */
+  async getDeviceId() {
+    if (this.config.deviceId) {
+      return this.config.deviceId
+    }
+
+    const storage = this.config.storage
+    let deviceId = storage.isAsync
+      ? await storage.getItemAsync?.(STORAGE_KEY_DEVICE_ID)
+      : storage.getItem(STORAGE_KEY_DEVICE_ID)
+
+    if (!deviceId) {
+      deviceId = this.generateUuid()
+      if (storage.isAsync) {
+        await storage.setItemAsync?.(STORAGE_KEY_DEVICE_ID, deviceId)
+      } else {
+        storage.setItem(STORAGE_KEY_DEVICE_ID, deviceId)
+      }
+    }
+
+    return deviceId
+  }
+
+  /**
+   * Generate a UUID v4
+   * @returns {string}
+   */
+  generateUuid() {
+    try {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID()
+      }
+    } catch (e) { }
+
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0
+      const v = c === 'x' ? r : (r & 0x3) | 0x8
+      return v.toString(16)
+    })
+  }
+
+  /**
+   * Construct a default User-Agent identifying the SDK and platform
+   * @returns {string}
+   */
+  getDefaultUserAgent() {
+    const platform = typeof window !== 'undefined' ? 'Browser' : 'Node.js'
+    const realUA = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    return `Veloquent JS SDK/1.5.0 (${platform}${realUA ? '; ' + realUA : ''})`
+  }
+
+  /**
    * Execute HTTP request with auth header and error handling
    * @param {Object} options
    * @param {string} options.method
@@ -162,11 +217,17 @@ export class RequestHelper {
     const url = buildUrl(this.config.apiUrl + '/api', path, query)
     const headers = {}
 
-    // Inject auth token if available
     const token = await this.getToken()
     if (token) {
       headers['authorization'] = `Bearer ${token}`
     }
+
+    const deviceId = await this.getDeviceId()
+    if (deviceId) {
+      headers['X-Device-ID'] = deviceId
+    }
+
+    headers['User-Agent'] = this.config.userAgent || this.getDefaultUserAgent()
 
     try {
       const response = await this.config.http.request({
@@ -178,13 +239,10 @@ export class RequestHelper {
         timeout: this.config.timeout
       })
 
-      // Check for HTTP errors
       if (response.status >= 400) {
         throw this.errorFromResponse(response)
       }
 
-      // Unwrap common Veloquent response envelope: { message, data, meta, errors }
-      // Note: /api/user endpoint does NOT use envelope, but that's out of MVP scope
       if (response.data && typeof response.data === 'object') {
         if ('data' in response.data) {
           return {
@@ -219,11 +277,17 @@ export class RequestHelper {
     const url = buildUrl(this.config.apiUrl + '/api', path, query)
     const headers = {}
 
-    // Inject auth token if available
     const token = await this.getToken()
     if (token) {
       headers['authorization'] = `Bearer ${token}`
     }
+
+    const deviceId = await this.getDeviceId()
+    if (deviceId) {
+      headers['X-Device-ID'] = deviceId
+    }
+
+    headers['User-Agent'] = this.config.userAgent || this.getDefaultUserAgent()
 
     try {
       const stream = this.config.http.requestStream({

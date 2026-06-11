@@ -25,7 +25,9 @@ import { Ai } from '../modules/ai.js'
  * const sdk = new Veloquent({
  *   apiUrl: 'https://example.com',
  *   http: createFetchAdapter(),
- *   storage: createLocalStorageAdapter()
+ *   storage: createLocalStorageAdapter(),
+ *   deviceId: 'my-custom-device-id',
+ *   userAgent: 'My App User Agent'
  * })
  * 
  * const { token } = await sdk.auth.login('users', 'user@example.com', 'password')

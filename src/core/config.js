@@ -11,6 +11,8 @@
  * @property {Object} [realtime] - Optional realtime adapter
  * @property {number} [timeout=30000] - Default request timeout in milliseconds
  * @property {number} [retryAttempts=1] - Number of retry attempts for failed requests
+ * @property {string} [deviceId] - Optional custom device ID/fingerprint
+ * @property {string} [userAgent] - Optional custom User-Agent override
  */
 
 /**
@@ -37,7 +39,9 @@ export function validateConfig(config, defaults) {
     storage: config.storage,
     realtime: config.realtime ?? defaults.realtime,
     timeout: config.timeout ?? defaults.timeout,
-    retryAttempts: config.retryAttempts ?? defaults.retryAttempts
+    retryAttempts: config.retryAttempts ?? defaults.retryAttempts,
+    deviceId: config.deviceId ?? defaults.deviceId,
+    userAgent: config.userAgent ?? defaults.userAgent
   }
 }
 
@@ -51,5 +55,7 @@ export const DEFAULT_CONFIG = {
   storage: null,
   realtime: null,
   timeout: 30000,
-  retryAttempts: 1
+  retryAttempts: 1,
+  deviceId: null,
+  userAgent: null
 }

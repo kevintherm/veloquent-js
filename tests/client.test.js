@@ -122,6 +122,107 @@ describe('Client', () => {
     const req = httpAdapter.getLastRequest()
     expect(req.headers.authorization).toBeUndefined()
   })
+
+  it('passes deviceId in X-Device-ID header when configured', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: { token: 'test-token', expires_in: 3600, collection_name: 'users' }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter,
+      deviceId: 'custom-dev-id-123'
+    })
+
+    await sdk.auth.login('users', 'test@example.com', 'password')
+
+    const req = httpAdapter.getLastRequest()
+    expect(req.headers['X-Device-ID']).toBe('custom-dev-id-123')
+  })
+
+  it('passes custom userAgent in User-Agent header when configured', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: { token: 'test-token', expires_in: 3600, collection_name: 'users' }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter,
+      userAgent: 'MySpecialUA 1.0'
+    })
+
+    await sdk.auth.login('users', 'test@example.com', 'password')
+
+    const req = httpAdapter.getLastRequest()
+    expect(req.headers['User-Agent']).toBe('MySpecialUA 1.0')
+  })
+
+  it('auto-generates and persists deviceId when not configured', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: { token: 'test-token', expires_in: 3600, collection_name: 'users' }
+    })
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: { token: 'test-token', expires_in: 3600, collection_name: 'users' }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    // First request
+    await sdk.auth.login('users', 'test@example.com', 'password')
+    const req1 = httpAdapter.getLastRequest()
+    const deviceId1 = req1.headers['X-Device-ID']
+    expect(deviceId1).toBeDefined()
+    expect(deviceId1.length).toBeGreaterThan(10)
+
+    // Verify it is saved in storage
+    expect(storageAdapter.getItem('vp:device_id')).toBe(deviceId1)
+
+    // Second request
+    await sdk.auth.login('users', 'test@example.com', 'password')
+    const req2 = httpAdapter.getLastRequest()
+    const deviceId2 = req2.headers['X-Device-ID']
+    expect(deviceId2).toBe(deviceId1)
+  })
+
+  it('provides default User-Agent identifying the Veloquent SDK', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: { token: 'test-token', expires_in: 3600, collection_name: 'users' }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    await sdk.auth.login('users', 'test@example.com', 'password')
+
+    const req = httpAdapter.getLastRequest()
+    expect(req.headers['User-Agent']).toContain('Veloquent JS SDK/1.5.0')
+  })
 })
 
 describe('Integration', () => {
