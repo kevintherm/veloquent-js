@@ -42,6 +42,8 @@ function buildFormData(data) {
       for (const item of value) {
         if (item instanceof File || item instanceof Blob) {
           form.append(key, item, item instanceof File ? item.name : undefined)
+        } else if (item instanceof Date) {
+          form.append(key, item.toISOString())
         } else {
           form.append(key, typeof item === 'object' ? JSON.stringify(item) : String(item))
         }
@@ -59,6 +61,11 @@ function buildFormData(data) {
     if ((typeof File !== 'undefined' && value instanceof File) ||
         (typeof Blob !== 'undefined' && value instanceof Blob)) {
       form.append(key, value, value instanceof File ? value.name : undefined)
+      continue
+    }
+
+    if (value instanceof Date) {
+      form.append(key, value.toISOString())
       continue
     }
 

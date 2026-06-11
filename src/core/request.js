@@ -229,11 +229,16 @@ export class RequestHelper {
 
     headers['User-Agent'] = this.config.userAgent || this.getDefaultUserAgent()
 
+    let requestBody = body
+    if (requestBody && !(typeof FormData !== 'undefined' && requestBody instanceof FormData)) {
+      requestBody = serializeDates(requestBody)
+    }
+
     try {
       const response = await this.config.http.request({
         url,
         method,
-        body,
+        body: requestBody,
         headers,
         signal,
         timeout: this.config.timeout
@@ -246,14 +251,14 @@ export class RequestHelper {
       if (response.data && typeof response.data === 'object') {
         if ('data' in response.data) {
           return {
-            data: response.data.data,
+            data: parseDates(response.data.data),
             meta: response.data.meta,
             message: response.data.message
           }
         }
       }
 
-      return { data: response.data }
+      return { data: parseDates(response.data) }
     } catch (error) {
       if (error instanceof SdkError) {
         throw error
@@ -289,11 +294,16 @@ export class RequestHelper {
 
     headers['User-Agent'] = this.config.userAgent || this.getDefaultUserAgent()
 
+    let requestBody = body
+    if (requestBody && !(typeof FormData !== 'undefined' && requestBody instanceof FormData)) {
+      requestBody = serializeDates(requestBody)
+    }
+
     try {
       const stream = this.config.http.requestStream({
         url,
         method,
-        body,
+        body: requestBody,
         headers,
         signal,
         timeout: this.config.timeout
@@ -338,4 +348,76 @@ export class RequestHelper {
 
     return new SdkError(code, message, { statusCode: status, details })
   }
+}
+
+/**
+ * Helper to check if a value is a plain object.
+ * @param {*} val
+ * @returns {boolean}
+ */
+function isPlainObject(val) {
+  if (typeof val !== 'object' || val === null) return false
+  const proto = Object.getPrototypeOf(val)
+  return proto === null || proto === Object.prototype
+}
+
+/**
+ * Recursively convert any Date objects in a payload to UTC ISO strings.
+ * Leaves other values (and date-only strings) untouched.
+ * @param {*} obj
+ * @returns {*}
+ */
+function serializeDates(obj) {
+  if (obj === null || obj === undefined) return obj
+  if (obj instanceof Date) {
+    return obj.toISOString()
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(serializeDates)
+  }
+  if (isPlainObject(obj)) {
+    const newObj = {}
+    for (const key of Object.keys(obj)) {
+      newObj[key] = serializeDates(obj[key])
+    }
+    return newObj
+  }
+  return obj
+}
+
+/**
+ * Recursively parse UTC ISO-8601 datetime strings back to local Date objects.
+ * Leaves date-only strings (e.g. YYYY-MM-DD) untouched.
+ * @param {*} obj
+ * @returns {*}
+ */
+function parseDates(obj) {
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj === 'string') {
+    // Matches YYYY-MM-DDTHH:mm:ss... or YYYY-MM-DD HH:mm:ss...
+    // Avoids matching date-only strings like YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}/.test(obj)) {
+      let normalized = obj
+      // If there is no timezone suffix (e.g. Z or +/- offset), treat it as UTC by appending 'Z'
+      if (!/[Zz]$/.test(normalized) && !/[+-]\d{2}(?::?\d{2})?$/.test(normalized)) {
+        normalized = normalized.replace(' ', 'T') + 'Z'
+      }
+      const date = new Date(normalized)
+      if (!isNaN(date.getTime())) {
+        return date
+      }
+    }
+    return obj
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(parseDates)
+  }
+  if (isPlainObject(obj)) {
+    const newObj = {}
+    for (const key of Object.keys(obj)) {
+      newObj[key] = parseDates(obj[key])
+    }
+    return newObj
+  }
+  return obj
 }
