@@ -221,7 +221,7 @@ describe('Client', () => {
     await sdk.auth.login('users', 'test@example.com', 'password')
 
     const req = httpAdapter.getLastRequest()
-    expect(req.headers['User-Agent']).toContain('Veloquent JS SDK/1.5.0')
+    expect(req.headers['User-Agent']).toContain('Veloquent JS SDK/1.7.1')
   })
 })
 

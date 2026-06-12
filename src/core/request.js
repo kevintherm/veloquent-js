@@ -68,12 +68,12 @@ export class RequestHelper {
     if (storage.isAsync) {
       await storage.setItemAsync?.(STORAGE_KEY_TOKEN, token)
       if (meta) {
-        await storage.setItemAsync?.(STORAGE_KEY_META, JSON.stringify(meta))
+        await storage.setItemAsync?.(STORAGE_KEY_META, JSON.stringify(serializeDates(meta)))
       }
     } else {
       storage.setItem(STORAGE_KEY_TOKEN, token)
       if (meta) {
-        storage.setItem(STORAGE_KEY_META, JSON.stringify(meta))
+        storage.setItem(STORAGE_KEY_META, JSON.stringify(serializeDates(meta)))
       }
     }
   }
@@ -108,7 +108,7 @@ export class RequestHelper {
 
     if (!userJson) return null
     try {
-      return JSON.parse(userJson)
+      return parseDates(JSON.parse(userJson))
     } catch (e) {
       return null
     }
@@ -121,7 +121,7 @@ export class RequestHelper {
    */
   async setUser(user) {
     const storage = this.config.storage
-    const userJson = JSON.stringify(user)
+    const userJson = JSON.stringify(serializeDates(user))
     if (storage.isAsync) {
       await storage.setItemAsync?.(STORAGE_KEY_USER, userJson)
     } else {
@@ -141,7 +141,7 @@ export class RequestHelper {
 
     if (!metaJson) return null
     try {
-      return JSON.parse(metaJson)
+      return parseDates(JSON.parse(metaJson))
     } catch (e) {
       return null
     }
@@ -199,7 +199,7 @@ export class RequestHelper {
   getDefaultUserAgent() {
     const platform = typeof window !== 'undefined' ? 'Browser' : 'Node.js'
     const realUA = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-    return `Veloquent JS SDK/1.5.0 (${platform}${realUA ? '; ' + realUA : ''})`
+    return `Veloquent JS SDK/1.7.1 (${platform}${realUA ? '; ' + realUA : ''})`
   }
 
   /**

@@ -18,3 +18,9 @@
     - Replays queued requests in FIFO order when connectivity is restored.
     - Exposes callbacks `onQueued`, `onFlushed`, and `onFlushError` for custom event handling.
     - Automatically refreshes the auth token from storage during replay.
+
+## 1.7.1
+
+- **Fix**:
+    - Standardize Date object serialization/deserialization for locally stored states (user records and auth metadata).
+

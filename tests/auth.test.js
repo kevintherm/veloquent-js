@@ -336,6 +336,46 @@ describe('Auth', () => {
     expect(JSON.parse(storageAdapter.getItem('vp:auth_user'))).toEqual(mockUser)
   })
 
+  it('saves and loads user state containing Date objects without throwing', async () => {
+    const httpAdapter = new MockHttpAdapter()
+    const storageAdapter = new MockStorageAdapter()
+
+    const now = new Date()
+    const mockUser = {
+      id: '1',
+      email: 'test@example.com',
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
+    }
+
+    httpAdapter.mockResponse(200, {
+      message: 'OK',
+      data: {
+        token: 'sync-token',
+        expires_in: 3600,
+        collection_name: 'users',
+        record: mockUser
+      }
+    })
+
+    const sdk = new Veloquent({
+      apiUrl: 'http://localhost:3000',
+      http: httpAdapter,
+      storage: storageAdapter
+    })
+
+    // 1. Login should parse Date fields, and save user state containing Date objects
+    await sdk.auth.login('users', 'test@example.com', 'password')
+
+    expect(sdk.auth.user.created_at).toBeInstanceOf(Date)
+    expect(sdk.auth.user.updated_at).toBeInstanceOf(Date)
+
+    // 2. Load state from storage should successfully retrieve and parse back to Date objects
+    await sdk.auth.loadState()
+    expect(sdk.auth.user.created_at).toBeInstanceOf(Date)
+    expect(sdk.auth.user.created_at.toISOString()).toBe(now.toISOString())
+  })
+
   it('provides validation error helpers on SdkError', async () => {
     const httpAdapter = new MockHttpAdapter()
     const storageAdapter = new MockStorageAdapter()
