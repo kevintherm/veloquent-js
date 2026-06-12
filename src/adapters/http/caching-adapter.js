@@ -273,7 +273,6 @@ class CachingAdapter {
       const queueId = responseData?.data?._queue_id
 
       // Find the ID of the record if it's PATCH or DELETE
-      // segments: ['', 'api', 'collections', '{collection}', 'records', '{id}']
       const urlParsed = new URL(req.url)
       const segments = urlParsed.pathname.split('/')
       const recordIdx = segments.indexOf('records')
@@ -285,11 +284,24 @@ class CachingAdapter {
           if (!cached || !cached.data) continue
 
           let cacheUpdated = false
+          let cacheData = cached.data
 
-          // 1. Updating a List Cache (e.g. GET /api/collections/{collection}/records)
-          if (cached.data.items && Array.isArray(cached.data.items)) {
-            let items = [...cached.data.items]
+          let items = null
+          let listKey = null
 
+          if (Array.isArray(cacheData)) {
+            items = [...cacheData]
+          } else if (cacheData && typeof cacheData === 'object') {
+            if (Array.isArray(cacheData.data)) {
+              listKey = 'data'
+              items = [...cacheData.data]
+            } else if (Array.isArray(cacheData.items)) {
+              listKey = 'items'
+              items = [...cacheData.items]
+            }
+          }
+
+          if (items !== null) {
             if (method === 'POST' && queueId) {
               const newRecord = {
                 ...reqBody,
@@ -300,44 +312,52 @@ class CachingAdapter {
               cacheUpdated = true
             } else if (method === 'PATCH' && recordId) {
               items = items.map(item => {
-                if (item.id === recordId) {
+                if (item && item.id === recordId) {
                   return { ...item, ...reqBody, _queued: true }
                 }
                 return item
               })
               cacheUpdated = true
             } else if (method === 'DELETE' && recordId) {
-              items = items.filter(item => item.id !== recordId)
+              items = items.filter(item => item && item.id !== recordId)
               cacheUpdated = true
             }
 
             if (cacheUpdated) {
-              cached.data.items = items
-            }
-          } 
-          
-          // 2. Updating a Detail Cache (e.g. GET /api/collections/{collection}/records/{id})
-          else if (cached.data.id && cached.data.id === recordId) {
-            if (method === 'PATCH') {
-              cached.data = { ...cached.data, ...reqBody, _queued: true }
-              cacheUpdated = true
-            } else if (method === 'DELETE') {
-              // Delete the detail cache entirely
-              if (this._storage.isAsync) {
-                await this._storage.removeItemAsync?.(key)
+              if (listKey) {
+                cacheData = { ...cacheData, [listKey]: items }
               } else {
-                this._storage.removeItem(key)
+                cacheData = items
               }
-              // Remove from registry
-              const updatedRegistry = (await this._loadRegistry()).filter(k => k !== key)
-              await this._saveRegistry(updatedRegistry)
-              continue
+            }
+          } else if (cacheData && typeof cacheData === 'object') {
+            const isWrapped = cacheData.data && typeof cacheData.data === 'object' && !Array.isArray(cacheData.data)
+            const recordMap = isWrapped ? cacheData.data : cacheData
+
+            if (recordMap && recordMap.id === recordId) {
+              if (method === 'PATCH') {
+                const updatedRecord = { ...recordMap, ...reqBody, _queued: true }
+                if (isWrapped) {
+                  cacheData = { ...cacheData, data: updatedRecord }
+                } else {
+                  cacheData = updatedRecord
+                }
+                cacheUpdated = true
+              } else if (method === 'DELETE') {
+                if (this._storage.isAsync) {
+                  await this._storage.removeItemAsync?.(key)
+                } else {
+                  this._storage.removeItem(key)
+                }
+                const updatedRegistry = (await this._loadRegistry()).filter(k => k !== key)
+                await this._saveRegistry(updatedRegistry)
+                continue
+              }
             }
           }
 
           if (cacheUpdated) {
-            // Save modified cache entry
-            await this._saveToCache(key, cached.data)
+            await this._saveToCache(key, cacheData)
           }
         }
       }

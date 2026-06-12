@@ -276,4 +276,64 @@ describe('CachingAdapter — optimistic updates', () => {
     expect(registry).toContain(`vp:cache:${listUrl}`)
     expect(registry).not.toContain(`vp:cache:${detailUrl}`)
   })
+
+  test('POST 202 appends item to wrapped list cache (data.data format)', async () => {
+    const mock = new MockHttpAdapter()
+    const { adapter, storage } = makeAdapter(mock)
+
+    const listUrl = 'https://api.example.com/api/collections/posts/records'
+
+    // Seed wrapped list cache
+    await storage.setItem(`vp:cache:${listUrl}`, JSON.stringify({
+      timestamp: Date.now(),
+      data: { data: [{ id: '1', title: 'Post 1' }] }
+    }))
+    await storage.setItem('vp:cache_registry', JSON.stringify([`vp:cache:${listUrl}`]))
+
+    mock.setResponse('POST', listUrl, 202, {
+      status: 202,
+      data: { title: 'Post 2', _queued: true, _queue_id: 'q-999' }
+    })
+
+    await adapter.request({
+      method: 'POST',
+      url: listUrl,
+      body: { title: 'Post 2' }
+    })
+
+    const cached = JSON.parse(storage.getItem(`vp:cache:${listUrl}`))
+    expect(cached.data.data).toHaveLength(2)
+    expect(cached.data.data[1].id).toBe('q-999')
+    expect(cached.data.data[1].title).toBe('Post 2')
+    expect(cached.data.data[1]._queued).toBe(true)
+  })
+
+  test('PATCH 202 updates wrapped detail cache (data.data format)', async () => {
+    const mock = new MockHttpAdapter()
+    const { adapter, storage } = makeAdapter(mock)
+
+    const detailUrl = 'https://api.example.com/api/collections/posts/records/123'
+
+    // Seed wrapped detail cache
+    await storage.setItem(`vp:cache:${detailUrl}`, JSON.stringify({
+      timestamp: Date.now(),
+      data: { data: { id: '123', title: 'Original' } }
+    }))
+    await storage.setItem('vp:cache_registry', JSON.stringify([`vp:cache:${detailUrl}`]))
+
+    mock.setResponse('PATCH', detailUrl, 202, {
+      status: 202,
+      data: { title: 'Updated Title', _queued: true }
+    })
+
+    await adapter.request({
+      method: 'PATCH',
+      url: detailUrl,
+      body: { title: 'Updated Title' }
+    })
+
+    const cached = JSON.parse(storage.getItem(`vp:cache:${detailUrl}`))
+    expect(cached.data.data.title).toBe('Updated Title')
+    expect(cached.data.data._queued).toBe(true)
+  })
 })

@@ -1,3 +1,8 @@
+## 1.8.1
+
+- **Fix**:
+    - Resolve issue where optimistic cache updates fail for wrapped response formats (e.g. nested under `data` or `items`).
+
 ## 1.8.0
 
 - **Caching Adapter**:
