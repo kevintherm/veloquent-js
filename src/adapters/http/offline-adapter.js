@@ -125,6 +125,13 @@ class OfflineAdapter {
     }
 
     try {
+      const queue = await this._loadQueue()
+      if (queue.length > 0) {
+        await this.flush()
+      }
+    } catch (_) {}
+
+    try {
       return await this._inner.request(req)
     } catch (error) {
       if (isMutation && isNetworkError(error)) {

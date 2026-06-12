@@ -133,6 +133,28 @@ describe('OfflineAdapter — GET requests', () => {
     try { await adapter.request({ method: 'GET', url: 'https://api.example.com/api/collections/posts/records' }) } catch (_) {}
     expect(await adapter.getQueueSize()).toBe(0)
   })
+
+  test('GET automatically attempts to flush queue first if queue is not empty', async () => {
+    const { adapter } = makeAdapter(new NetworkErrorAdapter())
+
+    // 1. Queue a mutation while offline
+    await adapter.request({ method: 'POST', url: 'https://api.example.com/api/collections/posts/records', body: { title: 'A' } })
+    expect(await adapter.getQueueSize()).toBe(1)
+
+    // 2. Swap to success inner adapter (simulating online connection)
+    const success = new SuccessAdapter()
+    adapter._inner = success
+
+    // 3. Send GET request
+    const res = await adapter.request({ method: 'GET', url: 'https://api.example.com/api/collections/posts/records' })
+
+    // 4. Verify GET succeeded, queue was flushed, and both calls were played
+    expect(res.status).toBe(200)
+    expect(await adapter.getQueueSize()).toBe(0)
+    expect(success.calls).toHaveLength(2)
+    expect(success.calls[0].method).toBe('POST')
+    expect(success.calls[1].method).toBe('GET')
+  })
 })
 
 // ---------------------------------------------------------------------------

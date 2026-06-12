@@ -1,3 +1,8 @@
+## 1.8.2
+
+- **Optimization**:
+    - Trigger immediate `flush()` of offline mutation queue on new HTTP requests if the queue is non-empty, reducing the data staleness window upon network recovery.
+
 ## 1.8.1
 
 - **Fix**:
