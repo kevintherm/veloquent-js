@@ -6,6 +6,7 @@
 export { Veloquent } from './core/client.js'
 export { createFetchAdapter } from './adapters/http/fetch-adapter.js'
 export { createOfflineAdapter } from './adapters/http/offline-adapter.js'
+export { createCachingAdapter } from './adapters/http/caching-adapter.js'
 export { createLocalStorageAdapter } from './adapters/storage/local-storage-adapter.js'
 export { createAsyncStorageAdapter } from './adapters/storage/async-storage-adapter.js'
 export { createEchoAdapter } from './adapters/realtime/echo.js'
